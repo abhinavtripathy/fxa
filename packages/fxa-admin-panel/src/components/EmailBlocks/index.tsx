@@ -2,37 +2,95 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-import React from 'react';
-import EmailBlock from './EmailBlock';
+import React, { useState } from 'react';
+import gql from 'graphql-tag';
+import { useLazyQuery } from 'react-apollo';
+import Account from './Account';
 import './index.scss';
 
+const GET_ACCOUNT_BY_EMAIL = gql`
+  query getAccountByEmail($email: String!) {
+    accountByEmail(email: $email) {
+      uid
+      email
+      createdAt
+      emailBounces {
+        email
+        createdAt
+        bounceType
+        bounceSubType
+      }
+    }
+  }
+`;
+
 export const EmailBlocks = () => {
+  const [inputValue, setInputValue] = useState<string>('');
+  const [showResult, setShowResult] = useState<Boolean>(false);
+  const [getAccount, { loading, error, data }] = useLazyQuery(
+    GET_ACCOUNT_BY_EMAIL
+  );
+
+  const handleSubmit = (event: React.FormEvent) => {
+    event.preventDefault();
+    getAccount({ variables: { email: inputValue } });
+    // Don't hide after the first result is shown
+    setShowResult(true);
+  };
+
   return (
     <div className="email-blocks">
       <h2>Find and Delete Email Blocks</h2>
       <p>
-        Description TO DO. Tootsie roll macaroon cupcake cake cheesecake pie.
-        Chocolate bar bear claw tiramisu dragée icing lemon drops jelly beans
-        chocolate toffee. Biscuit danish halvah chupa chups jelly-o. Soufflé
-        apple pie lemon drops oat cake chocolate cake jelly beans gingerbread.
+        Email addresses are blocked from the FxA email sender when an email sent
+        to the address has bounced.
+      </p>
+      <p>
+        Remove an email address from the blocked list by first searching for an
+        account by email. Brief account information will be displayed as well as
+        email bounces attached to the account. Delete the block on the email by
+        deleting the bounced email data.
       </p>
 
-      <div className="flex">
-        <input placeholder="email to search for"></input>
-        <button
-          className="email-blocks-search-button"
-          type="submit"
-          title="search"
-        ></button>
-      </div>
+      <form onSubmit={handleSubmit} className="flex">
+        <label htmlFor="email">Email to search for:</label>
+        <br />
+        <input
+          autoFocus
+          name="email"
+          type="email"
+          onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
+            setInputValue(event.target.value)
+          }
+          placeholder="hello@world.com"
+        />
+        <button className="email-blocks-search-button" title="search"></button>
+      </form>
 
-      <hr />
-
-      {/* for each result, .map to: */}
-
-      <EmailBlock />
+      {showResult ? (
+        <>
+          <hr />
+          <AccountSearchResult
+            {...{
+              loading,
+              error,
+              data,
+            }}
+          />
+        </>
+      ) : null}
     </div>
   );
+};
+
+const AccountSearchResult = ({ loading, error, data }: any) => {
+  if (loading) return <p>Loading...</p>;
+  if (error) return <p>An error occured.</p>;
+
+  if (data?.accountByEmail) {
+    return <Account {...data.accountByEmail} />;
+  }
+  return <p>Account not found.</p>;
 };
 
 export default EmailBlocks;
