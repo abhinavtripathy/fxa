@@ -22,7 +22,6 @@ const selectedPlan = {
   currency: 'usd',
   amount: 935,
   interval: 'mos',
-  interval_count: 1,
 };
 
 storiesOf('components/PlanDetail', module)
